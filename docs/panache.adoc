@@ -36,7 +36,7 @@ We'll use the Postgres in both your local and the production Kubernetes environm
 
 When testing or running in dev mode Quarkus can provide you with a zero-config database out of the box, a feature we refer to as *Dev Services*. Depending on your database type you may need *Docker* or *Podman* installed in order to use this feature. Dev Services is supported for the *PostgreSQL* databases. With that, you don't need to add required configurations (e.g., username, password, JDBC URL) to set up the PostgreSQL in the _application.properties_ file.
 
-Red Hat Dev Spaces enables you to run the Quarkus Dev Services in the terminal using the _KUBEDOCK_ tool. Unlikely local environment, you need to set the `quarkus.datasource.devservices.volumes` where the PostgreSQL's data is stored inside a container.
+Red Hat Dev Spaces enables you to run the Quarkus Dev Services in the terminal using the _KUBEDOCK_ tool. Unlikely a local environment, you need to set the `quarkus.datasource.devservices.volumes` where the PostgreSQL's data is stored inside a container.
 
 when you take a look at the _src/main/resources/application.properties_, you can see the following configuration which we already added for you in advance.
 
