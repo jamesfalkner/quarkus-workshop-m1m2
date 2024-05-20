@@ -70,16 +70,16 @@ ELF Header:
   Type:                              EXEC (Executable file)
   Machine:                           Advanced Micro Devices X86-64
   Version:                           0x1
-  Entry point address:               0x4051f0
+  Entry point address:               0x405000
   Start of program headers:          64 (bytes into file)
-  Start of section headers:          41322472 (bytes into file)
+  Start of section headers:          49403488 (bytes into file)
   Flags:                             0x0
   Size of this header:               64 (bytes)
   Size of program headers:           56 (bytes)
   Number of program headers:         9
   Size of section headers:           64 (bytes)
-  Number of section headers:         31
-  Section header string table index: 30
+  Number of section headers:         32
+  Section header string table index: 31
 ----
 
 It’s a binary that can only run on Linux, but as you’ll see in a moment, this native executable starts up very fast and takes up little memory.
@@ -96,10 +96,10 @@ Notice the amazingly fast startup time:
 
 [source,none,role="copypaste"]
 ----
-INFO  [io.quarkus] (main) people 1.0-SNAPSHOT native (powered by Quarkus 3.2.6.Final-redhat-00002) started in 0.026s. Listening on: http://0.0.0.0:8081
+INFO  [io.quarkus] (main) people 1.0-SNAPSHOT native (powered by Quarkus 3.8.3.redhat-00003) started in 0.024s. Listening on: http://0.0.0.0:8081
 ----
 
-That's *19* milliseconds to start up.
+That's *24* milliseconds to start up.
 
 And extremely low memory usage as reported by the Linux `ps` utility. While the app is running, open another Terminal and run:
 
@@ -112,11 +112,11 @@ You should see something like:
 [source,none]
 ----
     PID   RSS COMMAND
-  18590  2740 sh -c cd /projects/quarkus-workshop-m1m2-labs; ./target/people-1.0-SNAPSHOT-runner -Dquarkus.http.port=8081
-  18597 49332 ./target/people-1.0-SNAPSHOT-runner -Dquarkus.http.port=8081
+  13306  2804 sh -c cd /projects/quarkus-workshop-m1m2-labs; ./target/people-1.0-SNAPSHOT-runner -Dquarkus.http.port=8081
+  13312 44008 ./target/people-1.0-SNAPSHOT-runner -Dquarkus.http.port=8081
 ----
 
-The 2nd row is the actual process that is taking around 49 MB of memory (https://en.wikipedia.org/wiki/Resident_set_size[Resident Set Size^], or RSS). Pretty compact!
+The 2nd row is the actual process that is taking around `44` MB of memory (https://en.wikipedia.org/wiki/Resident_set_size[Resident Set Size^], or RSS). Pretty compact!
 
 [NOTE]
 ====
