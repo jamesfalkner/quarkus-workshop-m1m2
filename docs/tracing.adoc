@@ -72,20 +72,21 @@ spec:
   mode: deployment
   config: |
     receivers:
-      zipkin:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
     processors:
     exporters:
-      jaeger:
-        endpoint: jaeger-collector-headless.{{ USER_ID }}-project.svc:14250
-        tls:
-          ca_file: "/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt"
-      logging:
+      debug:
     service:
       pipelines:
         traces:
-          receivers: [zipkin]
+          receivers: [otlp]
           processors: []
-          exporters: [jaeger, logging]
+          exporters: [debug]
 ----
 
 Then, run the following `oc` command in VS Code terminal.
