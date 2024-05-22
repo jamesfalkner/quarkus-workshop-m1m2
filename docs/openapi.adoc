@@ -186,24 +186,24 @@ The final method should look like:
 
 [source,java]
 ----
-@Operation(summary = "Finds people born before a specific year",
-           description = "Search the people database and return a list of people born before the specified year")
-@APIResponses(value = {
-    @APIResponse(responseCode = "200", description = "The list of people born before the specified year",
+    @Operation(summary = "Finds people born before a specific year",
+        description = "Search the people database and return a list of people born before the specified year")
+    @APIResponses(value = {
+        @APIResponse(responseCode = "200", description = "The list of people born before the specified year",
         content = @Content(
             schema = @Schema(implementation = Person.class)
         )),
-    @APIResponse(responseCode = "500", description = "Something bad happened")
-})
-@GET
-@Path("/birth/before/{year}")
-@Produces(MediaType.APPLICATION_JSON)
-public List<Person> getBeforeYear(
-    @Parameter(description = "Cutoff year for searching for people", required = true, name="year")
-    @PathParam(value = "year") int year) {
+        @APIResponse(responseCode = "500", description = "Something bad happened")
+    })
+    @GET
+    @Path("/birth/before/{year}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<Person> getBeforeYear(
+        @Parameter(description = "Cutoff year for searching for people", required = true, name="year")
+        @PathParam(value = "year") int year) {
 
-    return Person.getBeforeYear(year);
-}
+        return Person.getBeforeYear(year);
+    }
 ----
 
 Now reload the same Swagger UI webpage (and expand the `/person/birth/before/{year}` section). Notice the Swagger documention is more filled out for the endpoint to which we added extra OpenAPI documentation:
