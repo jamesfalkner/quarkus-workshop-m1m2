@@ -23,9 +23,9 @@ You can install Keycloak in many ways, including just downloading and extracting
 
 === Deploy Keycloak Database
 
-Keycloak needs a database to store its data. We'll use Postgres. Back on the {openshift_cluster_console}/topology/ns/{{ USER_ID }}-project?view=graph[OpenShift web console^], click the Add icon once again, type `postgres ephemeral` into the search box, locate the `Postgres (Ephemeral)` template, click on it, and click *Instantiate Template*:
+Keycloak needs a database to store its data. We'll use Postgres. Back on the {{ CONSOLE_URL }}/topology/ns/{{ USER_ID }}-project?view=graph[OpenShift web console^], click the Add icon once again, type `postgres ephemeral` into the search box, locate the `Postgres (Ephemeral)` template, click on it, and click *Instantiate Template*:
 
-image::postgres-create-ks.png[]
+image::postgres-create-kc.png[kc, 800]
 
 On the next screen, override the following values (leaving the rest as their defaults):
 
@@ -34,11 +34,11 @@ On the next screen, override the following values (leaving the rest as their def
 
 Leave the rest as-is, including the username and password, which will be auto-generated for you and you'll refer to them later. Finally, click *Create*:
 
-image::postgres-create2-ks.png[]
+image::postgres-create2-kc.png[kc, 800]
 
 You should see a postgres database begin spinning up:
 
-image::postgres-create3-ks.png[]
+image::postgres-create3-kc.png[kc, 800]
 
 === Create self-signed certificate
 
@@ -67,7 +67,7 @@ This secret will be used in the next step.
 
 By creating an instance of a `Keycloak` object, the Keycloak operator will process it and instantiate a new Keycloak server. In the OpenShift web console, click the `Add` icon, type `keycloak` into the search box, click on the "Keycloak" item, and click Create:
 
-image::keycloak-create1.png[]
+image::keycloak-create1.png[kc, 800]
 
 On the next screen, make sure you're in the _YAML view_, and replace the YAML with the following definition:
 
@@ -96,7 +96,7 @@ spec:
 
 This references the certificate+key pair created earlier, as well as our Postgres database credentials, which are stored in a secret. Click *Create*, and you will see your new keycloak server starting up:
 
-image::keycloak-create2.png[]
+image::keycloak-create2.png[kc, 500]
 
 Wait for it to complete (and get a dark blue circle). This should only take a few seconds if everything is working! If it does not after a minute or so, double-check that you entered the right values, and the database secret and certificate secret both exist under the names given.
 
@@ -111,32 +111,32 @@ oc -n {{ USER_ID }}-project annotate statefulset keycloak "app.openshift.io/conn
 
 When you use the keycloak operator, it will generate an initial administrator username/password in a Secret. Access the secret by clicking on *Secrets*, and find the `keycloak-initial-admin` secret, and click on it:
 
-image::keycloak-secrets1.png[]
+image::keycloak-secrets1.png[kc, 800]
 
 Finally, click on *Reveal Values* to see the username (which should be `admin`), and the password:
 
-image::keycloak-adminsecret.png[]
+image::keycloak-adminsecret.png[kc, 800]
 
 `admin` is pretty easy to remember, but you'll probably want to copy the password to your clipboard (using the copy-to-clipboard icon at the far right, or CTRL-C (CMD-C on a Mac)) to use in a moment.
 
-Back on the {openshift_cluster_console}/topology/ns/{{ USER_ID }}-project?view=graph[OpenShift web console^] topology page, click the small "open" icon at the upper right of the Keycloak deployment:
+Back on the {{ CONSOLE_URL }}/topology/ns/{{ USER_ID }}-project?view=graph[OpenShift web console^] topology page, click the small "open" icon at the upper right of the Keycloak deployment:
 
-image::keycloak-openicon.png[]
+image::keycloak-openicon.png[kc, 500]
 
 You should land on the Keycloak intro screen:
 
-image::admin-intro.png[]
+image::admin-intro.png[kc, 500]
 
 Click *Administration Console* to log in with the following:
 
 * *Username or email*: `admin`
-* *Password*: The password you retrieved from the {openshift_cluster_console}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[secret^] earlier.
+* *Password*: The password you retrieved from the {{ CONSOLE_URL }}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[secret^] earlier.
 
-image::admin-pw.png[]
+image::admin-pw.png[kc, 800]
 
 Once logged in, you should be at the Admin home screen:
 
-image::admin-home.png[]
+image::admin-home.png[kc, 800]
 
 == Import Realm
 
@@ -150,7 +150,7 @@ The Keycloak operator can import realms you supply by creating an instance of a 
 
 We have pre-defined a new realm for this lab, in the `inventory/src/main/resources/globex-realm.yaml` file. The file contains a definition of the realm, which you can see by opening the file in DevSpaces:
 
-image::realm-file.png[]
+image::realm-file.png[kc, 800]
 
 Run the following command to create this object and cause the Keycloak operator to import the realm via a `Job`:
 
@@ -161,15 +161,15 @@ oc apply -n {{ USER_ID }}-project -f $PROJECT_SOURCE/src/main/resources/globex-r
 
 You will see a new `Job` created, wait for it to complete (for the circle to turn green) and for the Keycloak pod to automatically restart:
 
-image::realm-job.png[]
+image::realm-job.png[kc, 500]
 
 === Explore Realm
 
-Go back to the https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/[Keycloak administration console] and login as `admin` user (using the password from the {openshift_cluster_console}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[Secret^] as before). You should now see a new realm in the Realm dropdown. Select the `globex` realm by clicking on it.
+Go back to the https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/[Keycloak administration console] and login as `admin` user (using the password from the {{ CONSOLE_URL }}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[Secret^] as before). You should now see a new realm in the Realm dropdown. Select the `globex` realm by clicking on it.
 
 Within the new realm, click on `Users` to see the pre-created users `admin`, `alice`, and `jdoe`:
 
-image::new-users.png[]
+image::new-users.png[kc, 800]
 
 * `alice` is an ordinary user (will have the `user` role) whose password is `alice`
 * `admin` is an Administrator (has the `admin` and `user` role) and their password is `admin`
@@ -177,7 +177,7 @@ image::new-users.png[]
 
 We have also created a _Client_ within the realm that will be used by our backend inventory service called `backend-service`. This enables the service itself to authenticate with Keycloak to retrieve realm data.  Click on **Clients** to see this client.
 
-image::new-client.png[]
+image::new-client.png[kc, 800]
 
 Click on **Realm Roles** to see the roles our users are grouped into, `admin`, `confidential`, and `user` (and a few others). For example, clicking on `admin` > `Users in role` you can see only Alex Admin is in this role. In the `user` role, we have all of our fake users.
 
