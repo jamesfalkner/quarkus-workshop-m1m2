@@ -119,11 +119,7 @@ Back on the {{ CONSOLE_URL }}/topology/ns/{{ USER_ID }}-project?view=graph[OpenS
 
 image::keycloak-openicon.png[kc, 500]
 
-You should land on the Keycloak intro screen:
-
-image::admin-intro.png[kc, 500]
-
-Click *Administration Console* to log in with the following:
+Log in with the following:
 
 * *Username or email*: `admin`
 * *Password*: The password you retrieved from the {{ CONSOLE_URL }}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[secret^] earlier.
@@ -152,7 +148,7 @@ Run the following command to create this object and cause the Keycloak operator 
 
 [source,sh,role="copypaste"]
 ----
-oc apply -n {{ USER_ID }}-project -f $PROJECT_SOURCE/src/main/resources/globex-realm.yaml
+oc apply -n {{ USER_ID }}-project -f $PROJECT_SOURCE/src/main/resources/kc-realm.yaml
 ----
 
 You will see a new `Job` created, wait for it to complete (for the circle to turn green) and for the Keycloak pod to automatically restart:
@@ -203,8 +199,8 @@ Some configuration of the extension is required. Add this to your `application.p
 
 [source,properties,role="copypaste"]
 ----
-mp.jwt.verify.publickey.location=keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/certs<1>
-mp.jwt.verify.issuer=keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus<2>
+mp.jwt.verify.publickey.location=https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/certs<1>
+mp.jwt.verify.issuer=https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus<2>
 smallrye.jwt.client.tls.certificate.path=classpath:certs/certificate.pem<3>
 smallrye.jwt.client.tls.trust-all=true<4>
 ----
