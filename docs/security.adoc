@@ -17,6 +17,171 @@ Red Hat build of Keycloak is well suited for securing web-based and other modern
 
 Find more information https://developers.redhat.com/articles/2023/11/15/whats-new-red-hat-build-keycloak-version-22[here^].
 
+== Deploy Keycloak instance
+
+You can install Keycloak in many ways, including just downloading and extracting a zip file, downloading the source and building it, or manually constructing a container and deploying it. Kubernetes Operators make both the installation and management of Keycloak (and many other software packages) much easier, and we have installed the Keycloak operator for you to use.
+
+=== Deploy Keycloak Database
+
+Keycloak needs a database to store its data. We'll use Postgres. Back on the {openshift_cluster_console}/topology/ns/{{ USER_ID }}-project?view=graph[OpenShift web console^], click the Add icon once again, type `postgres ephemeral` into the search box, locate the `Postgres (Ephemeral)` template, click on it, and click *Instantiate Template*:
+
+image::postgres-create-ks.png[]
+
+On the next screen, override the following values (leaving the rest as their defaults):
+
+* *Database Service Name*: `keycloak-postgresql`
+* *PostgreSQL Database Name*: `keycloak`
+
+Leave the rest as-is, including the username and password, which will be auto-generated for you and you'll refer to them later. Finally, click *Create*:
+
+image::postgres-create2-ks.png[]
+
+You should see a postgres database begin spinning up:
+
+image::postgres-create3-ks.png[]
+
+=== Create self-signed certificate
+
+In the DevSpaces window, Open a Terminal window.
+
+image::new-terminal.png[new-terminal, 500]
+
+Let's make the postgresql database icon show its proper logo:
+
+[source,sh,role="copypaste"]
+----
+oc -n {{ USER_ID }}-project label dc keycloak-postgresql "app.openshift.io/runtime=postgresql" --overwrite
+----
+
+Keycloak needs a certificate pair to use for TLS communication. We will use OpenSSL to generate the key pair, and put the public key in the application so that we can refer to it at runtime. Run this command to create it and then create an OpenShift _Secret_ that holds the resulting key pair:
+
+[source,sh,role="copypaste"]
+----
+mkdir -p $PROJECT_SOURCE/src/main/resources/certs/ && \
+openssl req -subj '/CN={{ROUTE_SUBDOMAIN}}/O=Test Keycloak/C=US' -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out $PROJECT_SOURCE/src/main/resources/certs/certificate.pem && \
+oc -n {{ USER_ID }}-project create secret tls keycloak-cert-secret --cert $PROJECT_SOURCE/src/main/resources/certs/certificate.pem --key key.pem
+----
+This secret will be used in the next step.
+
+=== Create Keycloak instance
+
+By creating an instance of a `Keycloak` object, the Keycloak operator will process it and instantiate a new Keycloak server. In the OpenShift web console, click the `Add` icon, type `keycloak` into the search box, click on the "Keycloak" item, and click Create:
+
+image::keycloak-create1.png[]
+
+On the next screen, make sure you're in the _YAML view_, and replace the YAML with the following definition:
+
+[source,yaml,role="copypaste"]
+----
+apiVersion: k8s.keycloak.org/v2alpha1
+kind: Keycloak
+metadata:
+  name: keycloak
+spec:
+  instances: 1
+  http:
+    tlsSecret: keycloak-cert-secret
+  hostname:
+    hostname: keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}
+  db:
+    vendor: postgres
+    host: keycloak-postgresql
+    usernameSecret:
+      name: keycloak-postgresql
+      key: database-user
+    passwordSecret:
+      name: keycloak-postgresql
+      key: database-password
+----
+
+This references the certificate+key pair created earlier, as well as our Postgres database credentials, which are stored in a secret. Click *Create*, and you will see your new keycloak server starting up:
+
+image::keycloak-create2.png[]
+
+Wait for it to complete (and get a dark blue circle). This should only take a few seconds if everything is working! If it does not after a minute or so, double-check that you entered the right values, and the database secret and certificate secret both exist under the names given.
+
+Let's also visually link Keycloak to its database:
+
+[source,sh,role="copypaste"]
+----
+oc -n {{ USER_ID }}-project annotate statefulset keycloak "app.openshift.io/connects-to=keycloak-postgresql" --overwrite
+----
+
+=== Log into Keycloak
+
+When you use the keycloak operator, it will generate an initial administrator username/password in a Secret. Access the secret by clicking on *Secrets*, and find the `keycloak-initial-admin` secret, and click on it:
+
+image::keycloak-secrets1.png[]
+
+Finally, click on *Reveal Values* to see the username (which should be `admin`), and the password:
+
+image::keycloak-adminsecret.png[]
+
+`admin` is pretty easy to remember, but you'll probably want to copy the password to your clipboard (using the copy-to-clipboard icon at the far right, or CTRL-C (CMD-C on a Mac)) to use in a moment.
+
+Back on the {openshift_cluster_console}/topology/ns/{{ USER_ID }}-project?view=graph[OpenShift web console^] topology page, click the small "open" icon at the upper right of the Keycloak deployment:
+
+image::keycloak-openicon.png[]
+
+You should land on the Keycloak intro screen:
+
+image::admin-intro.png[]
+
+Click *Administration Console* to log in with the following:
+
+* *Username or email*: `admin`
+* *Password*: The password you retrieved from the {openshift_cluster_console}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[secret^] earlier.
+
+image::admin-pw.png[]
+
+Once logged in, you should be at the Admin home screen:
+
+image::admin-home.png[]
+
+== Import Realm
+
+A Keycloak _realm_ is a space where you manage objects, including users, applications, roles, and groups. A user belongs to and logs into a realm. One Keycloak deployment can define, store, and manage as many realms as there is space for in the database. Keycloak comes with a `master` realm but that's designed to be used for managing Keycloak itself, not for applications.
+
+For authentication purposes, we'll import a new realm called `globex` that has multiple users that we can test our authenticated endpoint code with, as well as a "confidential resource" based on access path, which will enable Keycloak to enforce authorization to this resource without code change.
+
+=== Create a KeycloakRealmImport
+
+The Keycloak operator can import realms you supply by creating an instance of a KeycloakRealmImport object in Kubernetes.
+
+We have pre-defined a new realm for this lab, in the `inventory/src/main/resources/globex-realm.yaml` file. The file contains a definition of the realm, which you can see by opening the file in DevSpaces:
+
+image::realm-file.png[]
+
+Run the following command to create this object and cause the Keycloak operator to import the realm via a `Job`:
+
+[source,sh,role="copypaste"]
+----
+oc apply -n {{ USER_ID }}-project -f $PROJECT_SOURCE/src/main/resources/globex-realm.yaml
+----
+
+You will see a new `Job` created, wait for it to complete (for the circle to turn green) and for the Keycloak pod to automatically restart:
+
+image::realm-job.png[]
+
+=== Explore Realm
+
+Go back to the https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/[Keycloak administration console] and login as `admin` user (using the password from the {openshift_cluster_console}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[Secret^] as before). You should now see a new realm in the Realm dropdown. Select the `globex` realm by clicking on it.
+
+Within the new realm, click on `Users` to see the pre-created users `admin`, `alice`, and `jdoe`:
+
+image::new-users.png[]
+
+* `alice` is an ordinary user (will have the `user` role) whose password is `alice`
+* `admin` is an Administrator (has the `admin` and `user` role) and their password is `admin`
+* `jdoe` is an ordinary user (has the `user` role) but has also been granted access to `confidential` resources in Keycloak, and their password is `jdoe`
+
+We have also created a _Client_ within the realm that will be used by our backend inventory service called `backend-service`. This enables the service itself to authenticate with Keycloak to retrieve realm data.  Click on **Clients** to see this client.
+
+image::new-client.png[]
+
+Click on **Realm Roles** to see the roles our users are grouped into, `admin`, `confidential`, and `user` (and a few others). For example, clicking on `admin` > `Users in role` you can see only Alex Admin is in this role. In the `user` role, we have all of our fake users.
+
+We have also defined a `Confidential` resource mapping that allows us to use Keycloak's fine-grained authorization policies to restrict access to certain endpoints without having to change our application code. We'll explore this later!
 
 == Add JWT to Quarkus
 
@@ -42,19 +207,19 @@ Some configuration of the extension is required. Add this to your `application.p
 
 [source,properties,role="copypaste"]
 ----
-mp.jwt.verify.publickey.location={{KEYCLOAK_URL}}/realms/quarkus/protocol/openid-connect/certs<1>
-mp.jwt.verify.issuer={{KEYCLOAK_URL}}/realms/quarkus<2>
-quarkus.smallrye-jwt.auth-mechanism=MP-JWT<3>
-quarkus.smallrye-jwt.realm-name=quarkus
-quarkus.smallrye-jwt.enabled=true
+mp.jwt.verify.publickey.location=keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/certs<1>
+mp.jwt.verify.issuer=keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus<2>
+smallrye.jwt.client.tls.certificate.path=classpath:certs/certificate.pem<3>
+smallrye.jwt.client.tls.trust-all=true<4>
 ----
 <1> Sets public key location for JWT authentication. Keycloak exports this for you at the URL.
 <2> Issuer URL. This must match the incoming JWT `iss` _claims_ or else authentication fails.
-<3> Sets authentication mechanism name to `MP-JWT`, the MicroProfile JWT RBAC specification standard name for the token based authentication mechanism.
+<3> Since we are using self-signed certificates, we manually supply the self-signed public key certificate used to for TLS certificate validation.
+<4> For simplicity we trust all hosts in this example since we’re using self-signed certs. In practice you would not be using self-signed certs, so proper trust chains can be formed.
 
 == Create protected endpoints
 
-We'll create 2 JWT-protected endpoints. Create a new class file `JWTResource.java` in the `org.acme.people.rest` package with the following code:
+We'll create 2 protected endpoints. Create a new class file `SecuredResource.java` in the `org.acme.people.rest` package with the following code:
 
 [source,java,role="copypaste"]
 ----
@@ -132,6 +297,7 @@ Let's re-build and re-deploy the application:
 
 [source,sh,role="copypaste"]
 ----
+oc delete deployment people &&
 mvn clean package -DskipTests && \
 oc label deployment/people app.kubernetes.io/part-of=people --overwrite && \
 oc annotate deployment/people app.openshift.io/connects-to=postgres-database --overwrite
@@ -185,7 +351,7 @@ Get a token for user `alice` with this command:
 [source,sh,role="copypaste"]
 ----
 export ALICE_TOKEN=$(\
-    curl -s -X POST {{KEYCLOAK_URL}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=alice&password=alice&grant_type=password' | jq --raw-output '.access_token' \
@@ -248,7 +414,7 @@ Obtain an Admin token:
 [source,sh,role="copypaste"]
 ----
 export ADMIN_TOKEN=$(\
-    curl -s -X POST {{KEYCLOAK_URL}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=admin&password=admin&grant_type=password' | jq --raw-output '.access_token' \
@@ -274,7 +440,7 @@ Set-Cookie: 2a1b392100b8b2cb3705c68f4ecbaf66=1b3560b80b9fad566e105aff1f31f880; p
 Cache-control: private
 
 hello admin, isSecure: false, authScheme: Bearer, hasJWT: true
-Injected issuer: ["{{KEYCLOAK_URL}}/realms/quarkus"]
+Injected issuer: ["keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus"]
 
 Claim Name: [sub] Claim Value: [af134cab-f41c-4675-b141-205f975db679]
 Claim Name: [groups] Claim Value: [[admin, user]]
@@ -335,10 +501,11 @@ Next, add these to your `application.properties` for Keycloak:
 [source,none,role="copypaste"]
 ----
 # OIDC config
-quarkus.oidc.auth-server-url={{ KEYCLOAK_URL }}/realms/quarkus
+quarkus.oidc.auth-server-url=keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus
 quarkus.oidc.client-id=backend-service
 quarkus.oidc.credentials.secret=secret
 quarkus.http.cors=true
+quarkus.tls.trust-all=true
 
 # Enable Policy Enforcement
 quarkus.keycloak.policy-enforcer.enable=true
@@ -429,7 +596,7 @@ Refresh the admin token (it may have expired):
 [source,sh,role="copypaste"]
 ----
 export ADMIN_TOKEN=$(\
-    curl -s -X POST {{KEYCLOAK_URL}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=admin&password=admin&grant_type=password' | jq --raw-output '.access_token' \
@@ -461,7 +628,7 @@ To access the confidential endpoint, you should obtain an access token for user 
 [source,sh,role="copypaste"]
 ----
 export JDOE_TOKEN=$(\
-    curl -s -X POST {{KEYCLOAK_URL}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=jdoe&password=jdoe&grant_type=password' | jq --raw-output '.access_token' \
