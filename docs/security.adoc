@@ -78,7 +78,7 @@ spec:
   http:
     tlsSecret: keycloak-cert-secret
   hostname:
-    hostname: keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}
+    hostname: https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}
   db:
     vendor: postgres
     host: keycloak-postgresql
@@ -157,7 +157,7 @@ image::realm-job.png[kc, 500]
 
 === Explore Realm
 
-Go back to the https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/[Keycloak administration console] and login as `admin` user (using the password from the {{ CONSOLE_URL }}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[Secret^] as before). You should now see a new realm in the Realm dropdown. Select the `globex` realm by clicking on it.
+Go back to the https://https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/[Keycloak administration console] and login as `admin` user (using the password from the {{ CONSOLE_URL }}/k8s/ns/{{ USER_ID }}-project/secrets/keycloak-initial-admin[Secret^] as before). You should now see a new realm in the Realm dropdown. Select the `globex` realm by clicking on it.
 
 Within the new realm, click on `Users` to see the pre-created users `admin`, `alice`, and `jdoe`:
 
@@ -199,8 +199,8 @@ Some configuration of the extension is required. Add this to your `application.p
 
 [source,properties,role="copypaste"]
 ----
-mp.jwt.verify.publickey.location=https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/certs<1>
-mp.jwt.verify.issuer=https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus<2>
+mp.jwt.verify.publickey.location=https://https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/certs<1>
+mp.jwt.verify.issuer=https://https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus<2>
 smallrye.jwt.client.tls.certificate.path=classpath:certs/certificate.pem<3>
 smallrye.jwt.client.tls.trust-all=true<4>
 ----
@@ -343,7 +343,7 @@ Get a token for user `alice` with this command:
 [source,sh,role="copypaste"]
 ----
 export ALICE_TOKEN=$(\
-    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=alice&password=alice&grant_type=password' | jq --raw-output '.access_token' \
@@ -406,7 +406,7 @@ Obtain an Admin token:
 [source,sh,role="copypaste"]
 ----
 export ADMIN_TOKEN=$(\
-    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=admin&password=admin&grant_type=password' | jq --raw-output '.access_token' \
@@ -432,7 +432,7 @@ Set-Cookie: 2a1b392100b8b2cb3705c68f4ecbaf66=1b3560b80b9fad566e105aff1f31f880; p
 Cache-control: private
 
 hello admin, isSecure: false, authScheme: Bearer, hasJWT: true
-Injected issuer: ["keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus"]
+Injected issuer: ["https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus"]
 
 Claim Name: [sub] Claim Value: [af134cab-f41c-4675-b141-205f975db679]
 Claim Name: [groups] Claim Value: [[admin, user]]
@@ -493,7 +493,7 @@ Next, add these to your `application.properties` for Keycloak:
 [source,none,role="copypaste"]
 ----
 # OIDC config
-quarkus.oidc.auth-server-url=keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus
+quarkus.oidc.auth-server-url=https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus
 quarkus.oidc.client-id=backend-service
 quarkus.oidc.credentials.secret=secret
 quarkus.http.cors=true
@@ -588,7 +588,7 @@ Refresh the admin token (it may have expired):
 [source,sh,role="copypaste"]
 ----
 export ADMIN_TOKEN=$(\
-    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=admin&password=admin&grant_type=password' | jq --raw-output '.access_token' \
@@ -620,7 +620,7 @@ To access the confidential endpoint, you should obtain an access token for user 
 [source,sh,role="copypaste"]
 ----
 export JDOE_TOKEN=$(\
-    curl -ks -X POST keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
+    curl -ks -X POST https://keycloak-{{ USER_ID }}-project.{{ROUTE_SUBDOMAIN}}/realms/quarkus/protocol/openid-connect/token \
     --user backend-service:secret \
     -H 'content-type: application/x-www-form-urlencoded' \
     -d 'username=jdoe&password=jdoe&grant_type=password' | jq --raw-output '.access_token' \
