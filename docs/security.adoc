@@ -42,11 +42,7 @@ image::postgres-create3-kc.png[kc, 800]
 
 === Create self-signed certificate
 
-In the DevSpaces window, Open a Terminal window.
-
-image::new-terminal.png[new-terminal, 500]
-
-Let's make the postgresql database icon show its proper logo:
+Let's make the postgresql database icon show its proper logo by running the following `oc` command in the terminal:
 
 [source,sh,role="copypaste"]
 ----
